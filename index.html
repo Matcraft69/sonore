@@ -3,44 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modem Acoustique Pro</title>
+    <title>Modem Acoustique Stable</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 15px; background: #eef2f3; }
-        .box { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        #output { font-size: 28px; color: #007bff; font-weight: bold; background: #f8f9fa; padding: 10px; border-radius: 8px; min-height: 40px; }
-        #visualizer { width: 100%; height: 20px; background: #ddd; border-radius: 10px; overflow: hidden; margin: 10px 0; }
-        #bar { width: 0%; height: 100%; background: #28a745; transition: width 0.1s; }
-        button { padding: 15px 25px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; width: 100%; margin: 5px 0; }
-        .btn-send { background: #28a745; color: white; }
-        .btn-mic { background: #007bff; color: white; }
-        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        body { font-family: sans-serif; text-align: center; padding: 15px; background: #f0f2f5; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        #output { font-size: 32px; color: #28a745; font-weight: bold; min-height: 50px; background: #eee; border-radius: 8px; padding: 10px; margin: 10px 0; }
+        #debug { font-family: monospace; color: #666; font-size: 14px; }
+        button { padding: 15px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; width: 100%; margin: 10px 0; color: white; font-weight: bold; }
+        .btn-send { background: #28a745; }
+        .btn-mic { background: #007bff; }
+        input { width: 90%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; }
+        .bar-container { width: 100%; height: 10px; background: #ddd; border-radius: 5px; margin: 10px 0; }
+        #volume-bar { width: 0%; height: 100%; background: #007bff; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <h3>1. Émetteur</h3>
-        <input type="text" id="msg" placeholder="Tape ton message...">
-        <button class="btn-send" onclick="transmettre()">ENVOYER LE SON</button>
+    <div class="card">
+        <h2>Émetteur</h2>
+        <input type="text" id="msg" placeholder="Message à envoyer...">
+        <button class="btn-send" onclick="transmettre()">ENVOYER PAR LE SON</button>
     </div>
 
-    <div class="box">
-        <h3>2. Récepteur</h3>
+    <div class="card">
+        <h2>Récepteur</h2>
         <button class="btn-mic" onclick="demarrer()">ACTIVER LE MICRO</button>
-        <div id="visualizer"><div id="bar"></div></div>
-        <div id="debug">Attente...</div>
-        <hr>
+        <div class="bar-container"><div id="volume-bar"></div></div>
+        <div id="debug">Attente du signal...</div>
         <div id="output"></div>
-        <button onclick="document.getElementById('output').innerText=''" style="background:#ccc; margin-top:10px;">Effacer</button>
+        <button onclick="document.getElementById('output').innerText=''" style="background:#888;">Effacer le texte</button>
     </div>
 
     <script>
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const f0 = 1200, f1 = 1600, duration = 0.2; // 0.2s pour être très stable
+        const f0 = 1200, f1 = 1600, duration = 0.3;
 
         function transmettre() {
             const text = document.getElementById('msg').value;
-            const bits = text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
+            // Signal de départ "1111" pour caler le récepteur
+            const bits = "1111" + text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
             let time = ctx.currentTime;
 
             for (let bit of bits) {
@@ -49,7 +50,7 @@
                 osc.frequency.value = (bit === '1') ? f1 : f0;
                 osc.connect(g); g.connect(ctx.destination);
                 g.gain.setValueAtTime(0, time);
-                g.gain.linearRampToValueAtTime(0.2, time + 0.02);
+                g.gain.linearRampToValueAtTime(0.1, time + 0.02);
                 g.gain.linearRampToValueAtTime(0, time + duration - 0.02);
                 osc.start(time); osc.stop(time + duration);
                 time += duration;
@@ -59,6 +60,7 @@
         let buffer = "", lastBit = null, lastTime = 0;
 
         async function demarrer() {
+            if (ctx.state === 'suspended') await ctx.resume();
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const src = ctx.createMediaStreamSource(stream);
             const ana = ctx.createAnalyser();
@@ -72,24 +74,28 @@
             function loop() {
                 ana.getByteFrequencyData(data);
                 
-                // Visualiseur (barre verte)
+                // Visualiseur de volume
                 const vol = Math.max(...data);
-                document.getElementById('bar').style.width = (vol / 2.5) + "%";
+                document.getElementById('volume-bar').style.width = (vol / 2.5) + "%";
 
                 let bit = null;
-                // Sensibilité augmentée (seuil à 40 au lieu de 140)
-                if (data[i1] > 40 && data[i1] > data[i0]) bit = "1";
-                else if (data[i0] > 40 && data[i0] > data[i1]) bit = "0";
+                if (data[i1] > 60 && data[i1] > data[i0]) bit = "1";
+                else if (data[i0] > 60 && data[i0] > data[i1]) bit = "0";
 
                 const now = Date.now();
-                if (bit !== null && bit !== lastBit && (now - lastTime > 150)) {
+                if (bit !== null && bit !== lastBit && (now - lastTime > 250)) {
                     buffer += bit;
                     lastBit = bit;
                     lastTime = now;
-                    document.getElementById('debug').innerText = "Bit reçu: " + bit;
-                    if (buffer.length === 8) {
-                        document.getElementById('output').innerText += String.fromCharCode(parseInt(buffer, 2));
-                        buffer = "";
+                    
+                    if (buffer.includes("1111")) {
+                        let content = buffer.split("1111")[1];
+                        document.getElementById('debug').innerText = "Bits : " + content;
+
+                        if (content && content.length === 8) {
+                            document.getElementById('output').innerText += String.fromCharCode(parseInt(content, 2));
+                            buffer = "1111"; // Prêt pour la lettre suivante
+                        }
                     }
                 } else if (bit === null) {
                     lastBit = null;

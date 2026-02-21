@@ -2,131 +2,127 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NeoChat Text & Vocal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Wi-Fi Pro</title>
     <style>
-        :root { --p: #007AFF; --bg: #f2f2f7; --card: rgba(255, 255, 255, 0.9); --text: #1c1c1e; }
-        .dark-mode { --bg: #000; --card: rgba(30, 30, 30, 0.9); --text: #fff; }
+        :root { --bg: #f0f2f5; --card: white; --text: #333; --border: #ccc; }
+        .dark-mode { --bg: #1a1a1a; --card: #2d2d2d; --text: #f0f0f0; --border: #444; }
         
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100dvh; display: flex; flex-direction: column; transition: 0.4s; }
-        .app { flex: 1; display: flex; flex-direction: column; max-width: 500px; margin: auto; width: 100%; background: var(--card); backdrop-filter: blur(20px); }
-        
-        header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.2); }
-        #chat { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        
-        .bubble { padding: 10px 15px; border-radius: 18px; max-width: 80%; font-size: 15px; word-wrap: break-word; }
-        .moi { align-self: flex-end; background: var(--p); color: white; border-bottom-right-radius: 4px; }
-        .ami { align-self: flex-start; background: rgba(128,128,128,0.2); border-bottom-left-radius: 4px; }
-        
-        .vocal-btn-play { background: #34c759; color: white; border: none; border-radius: 20px; padding: 8px 15px; cursor: pointer; font-weight: bold; margin-top: 5px; }
-        
-        .bar { padding: 12px; display: flex; gap: 10px; align-items: center; border-top: 1px solid rgba(128,128,128,0.2); }
-        input[type="text"] { flex: 1; padding: 12px; border-radius: 20px; border: none; background: rgba(128,128,128,0.1); color: var(--text); outline: none; }
-        
-        .btn-circle { width: 42px; height: 42px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-        .rec { background: #ff3b30 !important; color: white; animation: pulse 1s infinite; }
-        
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        #setup { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: var(--bg); color: var(--text); transition: 0.3s; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        #chat { height: 300px; border: 1px solid var(--border); overflow-y: auto; margin: 15px 0; padding: 10px; text-align: left; background: var(--bg); border-radius: 8px; }
+        input[type="text"] { width: 65%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); }
+        button { padding: 12px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        .id-display { font-size: 32px; font-weight: bold; color: #28a745; background: #e8f5e9; padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .img-chat { max-width: 100%; border-radius: 8px; margin-top: 5px; display: block; }
+        .download-btn { background: #28a745; font-size: 12px; padding: 5px 10px; margin-top: 5px; width: auto; }
+        .msg-container { margin-bottom: 15px; padding: 5px; border-bottom: 1px solid var(--border); }
+        .header-btns { display: flex; justify-content: space-between; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-<div id="setup">
-    <h1 id="my-id" style="font-size: 50px; color: var(--p); margin: 0;">----</h1>
-    <p>Ton Code NeoChat</p>
-    <input type="text" id="peer-id" placeholder="Entrer le code ami" style="padding:15px; width:70%; border-radius:15px; border:1px solid #ccc; text-align:center; font-size:18px; margin-bottom:15px;"><br>
-    <button onclick="connecter()" style="background:var(--p); color:white; padding:15px 40px; border-radius:15px; border:none; font-weight:bold; width:80%;">SE CONNECTER</button>
-</div>
+<div class="card">
+    <div class="header-btns">
+        <h2>Messagerie</h2>
+        <button onclick="toggleDarkMode()" style="background:#555; width:auto;">🌙/☀️</button>
+    </div>
+    
+    <div id="setup">
+        <p>Ton code :</p>
+        <div id="my-id" class="id-display">....</div>
+        <input type="text" id="friend-name" placeholder="Nom de l'ami">
+        <input type="text" id="peer-id" inputmode="numeric" placeholder="Code de l'ami">
+        <button onclick="connecter()" style="width:100%">SE CONNECTER</button>
+    </div>
 
-<div class="app">
-    <header>
-        <b>NeoChat</b>
-        <button onclick="document.body.classList.toggle('dark-mode')" style="background:none; border:none; font-size:20px; cursor:pointer;">🌓</button>
-    </header>
-
-    <div id="chat"></div>
-
-    <div class="bar" id="controls" style="visibility:hidden">
-        <button id="vocal-btn" class="btn-circle" style="background:#5856d6; color:white; font-size:18px;">🎤</button>
-        <input type="text" id="msg-in" placeholder="Message...">
-        <button class="btn-circle" onclick="send()" style="background:var(--p); color:white; font-size:18px;">↑</button>
+    <div id="chat-box" style="display:none;">
+        <h3 id="chat-with">Chat</h3>
+        <div id="chat"></div>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="message" placeholder="Message...">
+            <button onclick="document.getElementById('file-input').click()">📷</button>
+            <button onclick="envoyer()">OK</button>
+        </div>
+        <input type="file" id="file-input" style="display:none" accept="image/*" onchange="envoyerImage(this)">
     </div>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
-    const myId = Math.floor(1000 + Math.random() * 9000).toString();
-    const peer = new Peer(myId);
-    let conn, mediaRecorder, chunks = [];
+    const monId = Math.floor(1000 + Math.random() * 9000).toString();
+    const peer = new Peer(monId); 
+    let conn;
+    let nomAmi = "Ami";
+
+    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
 
     peer.on('open', id => document.getElementById('my-id').innerText = id);
-    peer.on('connection', c => { conn = c; init(); });
+    peer.on('connection', c => {
+        conn = c;
+        nomAmi = prompt("Nom de l'ami ?", "Ami") || "Ami";
+        activerInterfaceChat();
+    });
 
     function connecter() {
         const idAmi = document.getElementById('peer-id').value;
-        if(!idAmi) return alert("Code requis");
+        nomAmi = document.getElementById('friend-name').value || "Ami";
+        if (!idAmi) return alert("Code manquant");
         conn = peer.connect(idAmi);
-        init();
+        activerInterfaceChat();
     }
 
-    function init() {
+    function activerInterfaceChat() {
         document.getElementById('setup').style.display = 'none';
-        document.getElementById('controls').style.visibility = 'visible';
-        conn.on('data', d => {
-            if(d.type === 'vocal') addVocal(d.content, 'ami');
-            else addMsg(d, 'ami');
+        document.getElementById('chat-box').style.display = 'block';
+        document.getElementById('chat-with').innerText = "Avec " + nomAmi;
+        conn.on('data', data => {
+            if (data.type === 'image') { afficherImage(data.content, 'ami'); } 
+            else { afficherMessage(data, 'ami'); }
         });
     }
 
-    function addMsg(txt, type) {
-        const chat = document.getElementById('chat');
-        chat.innerHTML += `<div class="bubble ${type}">${txt}</div>`;
-        chat.scrollTop = chat.scrollHeight;
+    function envoyer() {
+        const input = document.getElementById('message');
+        if (input.value && conn) {
+            conn.send(input.value);
+            afficherMessage(input.value, 'moi');
+            input.value = "";
+        }
     }
 
-    function addVocal(url, type) {
-        const chat = document.getElementById('chat');
-        const aid = 'aud-' + Date.now();
-        chat.innerHTML += `<div class="bubble ${type}">
-            🎤 Message Vocal <br>
-            <button class="vocal-btn-play" onclick="document.getElementById('${aid}').play()">▶️ ÉCOUTER</button>
-            <audio id="${aid}" src="${url}"></audio>
-        </div>`;
-        chat.scrollTop = chat.scrollHeight;
-    }
-
-    // --- LOGIQUE VOCAL ---
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-        mediaRecorder = new MediaRecorder(s);
-        mediaRecorder.ondataavailable = e => chunks.push(e.data);
-        mediaRecorder.onstop = () => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const base64 = reader.result;
-                conn.send({type: 'vocal', content: base64});
-                addVocal(base64, 'moi');
-            };
-            reader.readAsDataURL(new Blob(chunks));
-            chunks = [];
+    function envoyerImage(input) {
+        const file = input.files[0];
+        if (!file || !conn) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const base64 = e.target.result;
+            conn.send({ type: 'image', content: base64 });
+            afficherImage(base64, 'moi');
         };
-    }).catch(err => console.log("Micro bloqué ou non dispo"));
+        reader.readAsDataURL(file);
+    }
 
-    const vBtn = document.getElementById('vocal-btn');
-    vBtn.onmousedown = vBtn.ontouchstart = (e) => { 
-        if(!mediaRecorder) return;
-        vBtn.classList.add('rec'); 
-        mediaRecorder.start(); 
-    };
-    vBtn.onmouseup = vBtn.ontouchend = () => { 
-        if(!mediaRecorder || mediaRecorder.state === "inactive") return;
-        vBtn.classList.remove('rec'); 
-        mediaRecorder.stop(); 
-    };
+    function afficherMessage(msg, type) {
+        const chat = document.getElementById('chat');
+        const auteur = type === 'moi' ? 'Moi' : nomAmi;
+        chat.innerHTML += `<div class="msg-container"><b>${auteur}:</b> ${msg}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+    }
 
-    function send() {
-        const i = document.getElementById('msg-in');
-        if(i.value && conn) { conn.send(i.value); addMsg(i.value, 'moi'); i.value = ""; }
+    function afficherImage(src, type) {
+        const chat = document.getElementById('chat');
+        const auteur = type === 'moi' ? 'Moi' : nomAmi;
+        const downloadBtn = `<br><button class="download-btn" onclick="telecharger('${src}')">⬇️ Enregistrer</button>`;
+        chat.innerHTML += `<div class="msg-container"><b>${auteur}:</b><img src="${src}" class="img-chat">${downloadBtn}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function telecharger(src) {
+        const link = document.createElement('a');
+        link.href = src;
+        link.download = "image_recue.png";
+        link.click();
     }
 </script>
 </body>

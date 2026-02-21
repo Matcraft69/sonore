@@ -2,57 +2,118 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Récepteur Acoustique</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modem Acoustique Ultra</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f0f4f8; }
-        #output { font-size: 24px; font-weight: bold; margin-top: 20px; color: #007bff; }
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 8px; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input { padding: 12px; width: 80%; border: 1px solid #ccc; border-radius: 5px; margin: 10px 0; }
+        button { padding: 12px 25px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; transition: 0.3s; }
+        .btn-send { background: #28a745; color: white; }
+        .btn-listen { background: #007bff; color: white; }
+        #status { font-weight: bold; color: #d9534f; margin: 10px; }
+        #output { font-size: 24px; color: #007bff; min-height: 1.5em; border-bottom: 2px solid #007bff; display: inline-block; padding: 0 10px; }
     </style>
 </head>
 <body>
-    <h1>Décodeur de Sons</h1>
-    <button onclick="startListening()">Activer le micro</button>
-    <div id="output">En attente de signal...</div>
+
+    <div class="card">
+        <h2>1. Émetteur</h2>
+        <input type="text" id="msg" placeholder="Ton message...">
+        <button class="btn-send" onclick="transmettre()">Envoyer par le son</button>
+    </div>
+
+    <div class="card">
+        <h2>2. Récepteur</h2>
+        <button class="btn-listen" onclick="demarrerReception()">Activer le Micro</button>
+        <div id="status">Micro éteint</div>
+        <p>Message reçu :</p>
+        <div id="output">...</div>
+    </div>
 
     <script>
-        let buffer = "";
-        let lastBit = null;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const freq0 = 1200; // Fréquence pour le bit 0
+        const freq1 = 1600; // Fréquence pour le bit 1
+        const bitDuration = 0.15; // 150ms par bit (plus lent = plus fiable)
 
-        async function startListening() {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const ctx = new AudioContext();
-            const source = ctx.createMediaStreamSource(stream);
-            const analyzer = ctx.createAnalyser();
-            analyzer.fftSize = 2048;
-            source.connect(analyzer);
-
-            const data = new Uint8Array(analyzer.frequencyBinCount);
+        // --- PARTIE ÉMETTEUR ---
+        function transmettre() {
+            const text = document.getElementById('msg').value;
+            if(!text) return;
             
-            function loop() {
-                analyzer.getByteFrequencyData(data);
+            // Conversion texte -> binaire
+            const bits = text.split('').map(char => 
+                char.charCodeAt(0).toString(2).padStart(8, '0')
+            ).join('');
+
+            let now = audioCtx.currentTime;
+            for (let bit of bits) {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = (bit === '1') ? freq1 : freq0;
                 
-                // On cherche la fréquence dominante entre 1200Hz et 1600Hz
-                let idx1200 = Math.round(1200 / (ctx.sampleRate / analyzer.fftSize));
-                let idx1600 = Math.round(1600 / (ctx.sampleRate / analyzer.fftSize));
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.1, now + 0.01);
+                gain.gain.linearRampToValueAtTime(0, now + bitDuration - 0.01);
 
-                if (data[idx1600] > 100) decodeBit('1');
-                else if (data[idx1200] > 100) decodeBit('0');
-                else lastBit = null;
-
-                requestAnimationFrame(loop);
+                osc.start(now);
+                osc.stop(now + bitDuration);
+                now += bitDuration;
             }
-            loop();
         }
 
-        function decodeBit(bit) {
-            if (bit !== lastBit) {
-                buffer += bit;
-                lastBit = bit;
-                if (buffer.length === 8) {
-                    const char = String.fromCharCode(parseInt(buffer, 2));
-                    document.getElementById('output').innerText += char;
-                    buffer = "";
+        // --- PARTIE RÉCEPTEUR ---
+        let buffer = "";
+        let lastBit = null;
+        let lastBitTime = 0;
+
+        async function demarrerReception() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const source = audioCtx.createMediaStreamSource(stream);
+                const analyzer = audioCtx.createAnalyser();
+                analyzer.fftSize = 2048;
+                source.connect(analyzer);
+
+                document.getElementById('status').innerText = "À l'écoute...";
+                document.getElementById('status').style.color = "#28a745";
+
+                const data = new Uint8Array(analyzer.frequencyBinCount);
+                const hzPerBin = audioCtx.sampleRate / analyzer.fftSize;
+                const idx0 = Math.round(freq0 / hzPerBin);
+                const idx1 = Math.round(freq1 / hzPerBin);
+
+                function loop() {
+                    analyzer.getByteFrequencyData(data);
+                    let currentBit = null;
+
+                    if (data[idx1] > 140 && data[idx1] > data[idx0]) currentBit = '1';
+                    else if (data[idx0] > 140 && data[idx0] > data[idx1]) currentBit = '0';
+
+                    const now = Date.now();
+                    if (currentBit !== null && currentBit !== lastBit && (now - lastBitTime > 100)) {
+                        buffer += currentBit;
+                        lastBit = currentBit;
+                        lastBitTime = now;
+
+                        if (buffer.length === 8) {
+                            const char = String.fromCharCode(parseInt(buffer, 2));
+                            document.getElementById('output').innerText = 
+                                (document.getElementById('output').innerText === "...") ? char : document.getElementById('output').innerText + char;
+                            buffer = "";
+                        }
+                    } else if (currentBit === null) {
+                        lastBit = null;
+                    }
+                    requestAnimationFrame(loop);
                 }
+                loop();
+            } catch (e) {
+                alert("Erreur micro : " + e);
             }
         }
     </script>

@@ -2,108 +2,77 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modem Acoustique Stable</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NeoChat Fix</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 15px; background: #f0f2f5; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        #output { font-size: 32px; color: #28a745; font-weight: bold; min-height: 50px; background: #eee; border-radius: 8px; padding: 10px; margin: 10px 0; }
-        #debug { font-family: monospace; color: #666; font-size: 14px; }
-        button { padding: 15px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; width: 100%; margin: 10px 0; color: white; font-weight: bold; }
-        .btn-send { background: #28a745; }
-        .btn-mic { background: #007bff; }
-        input { width: 90%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; }
-        .bar-container { width: 100%; height: 10px; background: #ddd; border-radius: 5px; margin: 10px 0; }
-        #volume-bar { width: 0%; height: 100%; background: #007bff; border-radius: 5px; }
+        :root { --p: #007AFF; --bg: #f2f2f7; --card: rgba(255, 255, 255, 0.85); --text: #1c1c1e; }
+        .dark-mode { --bg: #000; --card: rgba(30, 30, 30, 0.85); --text: #fff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; transition: 0.4s; }
+        .app { flex: 1; display: flex; flex-direction: column; max-width: 500px; margin: auto; width: 100%; background: var(--card); backdrop-filter: blur(20px); }
+        header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.2); }
+        #chat { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .bubble { padding: 10px 15px; border-radius: 18px; max-width: 80%; font-size: 15px; word-wrap: break-word; }
+        .moi { align-self: flex-end; background: var(--p); color: white; }
+        .ami { align-self: flex-start; background: rgba(128,128,128,0.2); }
+        .img-msg { width: 100%; border-radius: 12px; margin-top: 5px; cursor: pointer; }
+        .vocal-btn-play { background: #34c759; color: white; border: none; border-radius: 20px; padding: 5px 15px; cursor: pointer; font-weight: bold; }
+        .bar { padding: 10px; display: flex; gap: 10px; align-items: center; border-top: 1px solid rgba(128,128,128,0.2); }
+        input[type="text"] { flex: 1; padding: 10px; border-radius: 20px; border: none; background: rgba(128,128,128,0.1); color: var(--text); }
+        .btn-circle { width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .rec { background: #ff3b30 !important; color: white; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Émetteur</h2>
-        <input type="text" id="msg" placeholder="Message à envoyer...">
-        <button class="btn-send" onclick="transmettre()">ENVOYER PAR LE SON</button>
+<div class="app">
+    <header>
+        <b>NeoChat Pro</b>
+        <button onclick="document.body.classList.toggle('dark-mode')" style="background:none; border:none; font-size:20px;">🌓</button>
+    </header>
+
+    <div id="chat">
+        <div id="setup" style="text-align:center; margin-top:50px;">
+            <h1 id="my-id" style="font-size:40px; color:var(--p);">----</h1>
+            <input type="text" id="peer-id" placeholder="Code ami" style="width:60%; padding:10px; margin-bottom:10px; border-radius:10px; border:1px solid #ccc;"><br>
+            <button onclick="connecter()" style="background:var(--p); color:white; padding:10px 20px; border-radius:10px; border:none;">REJOINDRE</button>
+        </div>
     </div>
 
-    <div class="card">
-        <h2>Récepteur</h2>
-        <button class="btn-mic" onclick="demarrer()">ACTIVER LE MICRO</button>
-        <div class="bar-container"><div id="volume-bar"></div></div>
-        <div id="debug">Attente du signal...</div>
-        <div id="output"></div>
-        <button onclick="document.getElementById('output').innerText=''" style="background:#888;">Effacer le texte</button>
+    <div class="bar" id="controls" style="display:none">
+        <button class="btn-circle" onclick="document.getElementById('file').click()">🖼️</button>
+        <input type="text" id="msg-in" placeholder="Message...">
+        <button id="vocal-btn" class="btn-circle" style="background:#5856d6; color:white;">🎤</button>
+        <button class="btn-circle" onclick="send()" style="background:var(--p); color:white;">↑</button>
+        <input type="file" id="file" hidden onchange="sendImg(this)" accept="image/*">
     </div>
+</div>
 
-    <script>
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const f0 = 1200, f1 = 1600, duration = 0.3;
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script>
+    const myId = Math.floor(1000 + Math.random() * 9000).toString();
+    const peer = new Peer(myId);
+    let conn, mediaRecorder, chunks = [];
 
-        function transmettre() {
-            const text = document.getElementById('msg').value;
-            // Signal de départ "1111" pour caler le récepteur
-            const bits = "1111" + text.split('').map(c => c.charCodeAt(0).toString(2).padStart(8, '0')).join('');
-            let time = ctx.currentTime;
+    peer.on('open', id => document.getElementById('my-id').innerText = id);
+    peer.on('connection', c => { conn = c; init(); });
 
-            for (let bit of bits) {
-                const osc = ctx.createOscillator();
-                const g = ctx.createGain();
-                osc.frequency.value = (bit === '1') ? f1 : f0;
-                osc.connect(g); g.connect(ctx.destination);
-                g.gain.setValueAtTime(0, time);
-                g.gain.linearRampToValueAtTime(0.1, time + 0.02);
-                g.gain.linearRampToValueAtTime(0, time + duration - 0.02);
-                osc.start(time); osc.stop(time + duration);
-                time += duration;
-            }
-        }
+    function connecter() {
+        conn = peer.connect(document.getElementById('peer-id').value);
+        init();
+    }
 
-        let buffer = "", lastBit = null, lastTime = 0;
+    function init() {
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('controls').style.display = 'flex';
+        conn.on('data', d => {
+            if(d.type === 'vocal') addVocal(d.content, 'ami');
+            else if(d.type === 'image') addImg(d.content, 'ami');
+            else addMsg(d, 'ami');
+        });
+    }
 
-        async function demarrer() {
-            if (ctx.state === 'suspended') await ctx.resume();
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const src = ctx.createMediaStreamSource(stream);
-            const ana = ctx.createAnalyser();
-            ana.fftSize = 2048;
-            src.connect(ana);
-
-            const data = new Uint8Array(ana.frequencyBinCount);
-            const hzPerBin = ctx.sampleRate / ana.fftSize;
-            const i0 = Math.round(f0 / hzPerBin), i1 = Math.round(f1 / hzPerBin);
-
-            function loop() {
-                ana.getByteFrequencyData(data);
-                
-                // Visualiseur de volume
-                const vol = Math.max(...data);
-                document.getElementById('volume-bar').style.width = (vol / 2.5) + "%";
-
-                let bit = null;
-                if (data[i1] > 60 && data[i1] > data[i0]) bit = "1";
-                else if (data[i0] > 60 && data[i0] > data[i1]) bit = "0";
-
-                const now = Date.now();
-                if (bit !== null && bit !== lastBit && (now - lastTime > 250)) {
-                    buffer += bit;
-                    lastBit = bit;
-                    lastTime = now;
-                    
-                    if (buffer.includes("1111")) {
-                        let content = buffer.split("1111")[1];
-                        document.getElementById('debug').innerText = "Bits : " + content;
-
-                        if (content && content.length === 8) {
-                            document.getElementById('output').innerText += String.fromCharCode(parseInt(content, 2));
-                            buffer = "1111"; // Prêt pour la lettre suivante
-                        }
-                    }
-                } else if (bit === null) {
-                    lastBit = null;
-                }
-                requestAnimationFrame(loop);
-            }
-            loop();
-        }
-    </script>
-</body>
-</html>
+    function addMsg(c, t) {
+        const h = document.getElementById('chat');
+        h.innerHTML += `<div class="bubble ${t}">${c}</div>`;
+        h.scrollTop = h.scrollHeight;

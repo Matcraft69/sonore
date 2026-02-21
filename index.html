@@ -3,76 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NeoChat Fix</title>
+    <title>NeoChat - Spécial Image</title>
     <style>
-        :root { --p: #007AFF; --bg: #f2f2f7; --card: rgba(255, 255, 255, 0.85); --text: #1c1c1e; }
-        .dark-mode { --bg: #000; --card: rgba(30, 30, 30, 0.85); --text: #fff; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; transition: 0.4s; }
-        .app { flex: 1; display: flex; flex-direction: column; max-width: 500px; margin: auto; width: 100%; background: var(--card); backdrop-filter: blur(20px); }
-        header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.2); }
+        :root { --p: #007AFF; --bg: #f2f2f7; --card: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100dvh; }
+        
+        header { padding: 15px; background: white; border-bottom: 1px solid #ddd; text-align: center; font-weight: bold; }
+        
         #chat { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
-        .bubble { padding: 10px 15px; border-radius: 18px; max-width: 80%; font-size: 15px; word-wrap: break-word; }
+        
+        .bubble { padding: 10px 15px; border-radius: 18px; max-width: 85%; font-size: 15px; word-wrap: break-word; position: relative; }
         .moi { align-self: flex-end; background: var(--p); color: white; }
-        .ami { align-self: flex-start; background: rgba(128,128,128,0.2); }
-        .img-msg { width: 100%; border-radius: 12px; margin-top: 5px; cursor: pointer; }
-        .vocal-btn-play { background: #34c759; color: white; border: none; border-radius: 20px; padding: 5px 15px; cursor: pointer; font-weight: bold; }
-        .bar { padding: 10px; display: flex; gap: 10px; align-items: center; border-top: 1px solid rgba(128,128,128,0.2); }
-        input[type="text"] { flex: 1; padding: 10px; border-radius: 20px; border: none; background: rgba(128,128,128,0.1); color: var(--text); }
-        .btn-circle { width: 40px; height: 40px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .rec { background: #ff3b30 !important; color: white; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .ami { align-self: flex-start; background: #e9e9eb; color: black; }
+        
+        .img-msg { width: 100%; max-width: 250px; border-radius: 12px; display: block; margin: 5px 0; }
+        
+        .bar { padding: 10px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; align-items: center; }
+        input[type="text"] { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
+        
+        .btn-action { background: var(--p); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        
+        #setup { position: fixed; inset: 0; background: var(--bg); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
     </style>
 </head>
 <body>
 
-<div class="app">
-    <header>
-        <b>NeoChat Pro</b>
-        <button onclick="document.body.classList.toggle('dark-mode')" style="background:none; border:none; font-size:20px;">🌓</button>
-    </header>
+<div id="setup">
+    <h1 id="my-id" style="font-size: 50px; color: var(--p); margin: 0;">----</h1>
+    <p>Ton Code de Connexion</p>
+    <input type="text" id="peer-id" placeholder="Code de l'ami" style="padding:15px; width:80%; border-radius:10px; border:1px solid #ccc; text-align:center; font-size:20px;"><br>
+    <button onclick="connecter()" style="background:var(--p); color:white; padding:15px 30px; border-radius:10px; border:none; font-weight:bold; width:85%;">REJOINDRE LE CHAT</button>
+</div>
 
-    <div id="chat">
-        <div id="setup" style="text-align:center; margin-top:50px;">
-            <h1 id="my-id" style="font-size:40px; color:var(--p);">----</h1>
-            <input type="text" id="peer-id" placeholder="Code ami" style="width:60%; padding:10px; margin-bottom:10px; border-radius:10px; border:1px solid #ccc;"><br>
-            <button onclick="connecter()" style="background:var(--p); color:white; padding:10px 20px; border-radius:10px; border:none;">REJOINDRE</button>
-        </div>
-    </div>
+<header>NeoChat Photo</header>
 
-    <div class="bar" id="controls" style="display:none">
-        <button class="btn-circle" onclick="document.getElementById('file').click()">🖼️</button>
-        <input type="text" id="msg-in" placeholder="Message...">
-        <button id="vocal-btn" class="btn-circle" style="background:#5856d6; color:white;">🎤</button>
-        <button class="btn-circle" onclick="send()" style="background:var(--p); color:white;">↑</button>
-        <input type="file" id="file" hidden onchange="sendImg(this)" accept="image/*">
-    </div>
+<div id="chat"></div>
+
+<div class="bar" id="controls" style="visibility:hidden">
+    <button class="btn-action" onclick="document.getElementById('file').click()" style="background:#5856d6;">📷</button>
+    <input type="text" id="msg-in" placeholder="Message...">
+    <button class="btn-action" onclick="sendText()">↑</button>
+    <input type="file" id="file" hidden onchange="processAndSend(this)" accept="image/*">
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script>
     const myId = Math.floor(1000 + Math.random() * 9000).toString();
     const peer = new Peer(myId);
-    let conn, mediaRecorder, chunks = [];
+    let conn;
 
     peer.on('open', id => document.getElementById('my-id').innerText = id);
-    peer.on('connection', c => { conn = c; init(); });
+    peer.on('connection', c => { conn = c; setupChat(); });
 
     function connecter() {
-        conn = peer.connect(document.getElementById('peer-id').value);
-        init();
+        const idAmi = document.getElementById('peer-id').value;
+        if(!idAmi) return alert("Mets le code !");
+        conn = peer.connect(idAmi);
+        setupChat();
     }
 
-    function init() {
+    function setupChat() {
         document.getElementById('setup').style.display = 'none';
-        document.getElementById('controls').style.display = 'flex';
-        conn.on('data', d => {
-            if(d.type === 'vocal') addVocal(d.content, 'ami');
-            else if(d.type === 'image') addImg(d.content, 'ami');
-            else addMsg(d, 'ami');
+        document.getElementById('controls').style.visibility = 'visible';
+        
+        conn.on('data', data => {
+            if (data.startsWith('data:image')) addImg(data, 'ami');
+            else addMsg(data, 'ami');
         });
     }
 
-    function addMsg(c, t) {
-        const h = document.getElementById('chat');
-        h.innerHTML += `<div class="bubble ${t}">${c}</div>`;
-        h.scrollTop = h.scrollHeight;
+    function addMsg(txt, type) {
+        const chat = document.getElementById('chat');
+        chat.innerHTML += `<div class="bubble ${type}">${txt}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addImg(src, type) {
+        const chat = document.getElementById('chat');
+        chat.innerHTML += `<div class="bubble ${type}"><img src="${src}" class="img-msg"></div>`;
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function sendText() {
+        const input = document.getElementById('msg-in');
+        if(input.value && conn) {
+            conn.send(input.value);
+            addMsg(input.value, 'moi');
+            input.value = "";
+        }
+    }
+
+    // --- MAGIE DE L'IMAGE : COMPRESSION ---
+    function processAndSend(input) {
+        const file = input.files[0];
+        if(!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // On crée un canvas pour réduire l'image
+                const canvas = document.createElement('canvas');
+                const max_size = 800; // Taille max 800px pour que ça passe partout
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > max_size) { height *= max_size / width; width = max_size; }
+                } else {
+                    if (height > max_size) { width *= max_size / height; height = max_size; }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // On transforme en JPEG compressé (0.7 = 70% qualité)
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                
+                conn.send(compressedBase64);
+                addImg(compressedBase64, 'moi');
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+</script>
+</body>
+</html>
